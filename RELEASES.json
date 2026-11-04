@@ -1,4 +1,8 @@
 {
+  "1.0.4": {
+    "fr": "Le nouveau logo de Foldbook sur la page d’état du serveur.",
+    "en": "The new Foldbook logo on the server status page."
+  },
   "1.0.3": {
     "fr": "Tu lis tes bibliothèques hors de chez toi sans rien ajouter : dehors, Foldbook passe tout seul par ton serveur. Tu peux aussi y lire les dossiers que tu ne prêtes pas.",
     "en": "You read your libraries away from home without adding anything: outside, Foldbook goes through your server on its own. You can also read the folders you don’t lend."
