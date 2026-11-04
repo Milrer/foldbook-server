@@ -1,4 +1,8 @@
 {
+  "1.0.5": {
+    "fr": "Sécurité : ton serveur ne reçoit plus la connexion Foldbook de tes invités, seulement un jeton valable pour lui et pour une heure. Mise à jour nécessaire pour continuer à lire et prêter hors de chez toi.",
+    "en": "Security: your server no longer receives your guests’ Foldbook sign-in, only a token valid for it and for one hour. Update needed to keep reading and lending away from home."
+  },
   "1.0.4": {
     "fr": "Le nouveau logo de Foldbook sur la page d’état du serveur.",
     "en": "The new Foldbook logo on the server status page."

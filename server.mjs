@@ -6,6 +6,7 @@
 // bibliothèque partagée exactement comme un serveur WebDAV, CBZ page par page compris.
 // Chaque requête doit porter le jeton du compte Foldbook (Authorization: Bearer …) ; le
 // serveur vérifie le compte auprès de Supabase, puis ce que la personne a le droit de voir.
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import http from 'node:http';
@@ -14,7 +15,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import WebSocket from 'ws';
 
-const VERSION = '1.0.4';
+const VERSION = '1.0.5';
 const LIBRARY = path.resolve(process.env.LIBRARY_DIR ?? '/library');
 const DATA = path.resolve(process.env.DATA_DIR ?? '/data');
 const PORT = Number(process.env.PORT ?? 8686);
@@ -127,24 +128,26 @@ async function heartbeat() {
 
 /* ——————————————————— Les comptes et les droits ——————————————————— */
 
-const tokens = new Map();
-
 /** Le compte derrière un jeton, vérifié par Supabase et gardé 5 minutes. */
 async function userOf(header) {
   const token = header?.match(/^Bearer\s+(.+)$/i)?.[1];
   if (!token) return null;
   // Pour les essais en local seulement : un jeton fixe, si la variable est posée.
   if (process.env.FOLDBOOK_DEV_TOKEN && token === process.env.FOLDBOOK_DEV_TOKEN) return process.env.FOLDBOOK_DEV_USER;
-  const known = tokens.get(token);
-  if (known && known.until > Date.now()) return known.id;
-  const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-    headers: { apikey: SUPABASE_KEY, authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) return null;
-  const { id } = await res.json();
-  if (tokens.size > 500) tokens.clear();
-  tokens.set(token, { id, until: Date.now() + 5 * 60_000 });
-  return id;
+  // Un jeton signé pour ce serveur seul, délivré par la base à son propriétaire ou à un invité :
+  // le serveur ne voit jamais la session Supabase de ses lecteurs.
+  const key = state.token_key;
+  const [payload, mac] = token.split('.');
+  if (!key || !payload || !mac || token.split('.').length !== 2) return null;
+  const expected = crypto.createHmac('sha256', key).update(payload).digest('hex');
+  if (mac.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(expected))) return null;
+  try {
+    const { u, s, e } = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (s !== identity?.id || !(e * 1000 > Date.now())) return null;
+    return u;
+  } catch {
+    return null;
+  }
 }
 
 /**
