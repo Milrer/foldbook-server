@@ -1,4 +1,8 @@
 {
+  "1.0.3": {
+    "fr": "Tu lis tes bibliothèques hors de chez toi sans rien ajouter : dehors, Foldbook passe tout seul par ton serveur. Tu peux aussi y lire les dossiers que tu ne prêtes pas.",
+    "en": "You read your libraries away from home without adding anything: outside, Foldbook goes through your server on its own. You can also read the folders you don’t lend."
+  },
   "1.0.2": {
     "fr": "Tu choisis dans l’app les dossiers que tu prêtes : rien n’est prêté avant que tu valides, et les dossiers sans livres (films, téléchargements) ne sont plus cochés d’avance.",
     "en": "You choose in the app which folders you lend: nothing is lent until you confirm, and folders without books (movies, downloads) are no longer ticked in advance."

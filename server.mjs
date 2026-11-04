@@ -14,7 +14,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import WebSocket from 'ws';
 
-const VERSION = '1.0.2';
+const VERSION = '1.0.3';
 const LIBRARY = path.resolve(process.env.LIBRARY_DIR ?? '/library');
 const DATA = path.resolve(process.env.DATA_DIR ?? '/data');
 const PORT = Number(process.env.PORT ?? 8686);
@@ -153,10 +153,10 @@ async function userOf(header) {
  */
 function allowed(uid, rel) {
   if (!uid) return false;
-  // Un dossier de la racine que le propriétaire n'a pas coché n'est prêté à personne,
-  // lui compris : par le relais, on ne lit que ce qui est prêté.
-  if (rel && !lentNames().has(rel.split('/')[0])) return false;
+  // Le propriétaire lit tout, chez lui comme dehors : ce sont ses livres.
   if (uid === state.owner) return true;
+  // Pour les autres, un dossier de la racine que le propriétaire n'a pas coché n'est prêté à personne.
+  if (rel && !lentNames().has(rel.split('/')[0])) return false;
   const m = state.members?.find((x) => x.user_id === uid);
   if (!m) return false;
   if (!rel) return true;
@@ -198,7 +198,7 @@ async function handle({ method, url, headers, local }) {
     return { status: 200, headers: { 'content-type': 'text/html; charset=utf-8' }, body: statusPage() };
   }
   if (pathname === '/health') {
-    return { status: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ok: true, version: VERSION, paired: !!state.owner }) };
+    return { status: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ok: true, version: VERSION, paired: !!state.owner, id: local ? identity?.id ?? null : undefined }) };
   }
   if (!pathname.startsWith('/dav')) return { status: 404, headers: {}, body: '' };
 
