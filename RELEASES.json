@@ -1,0 +1,14 @@
+{
+  "1.0.2": {
+    "fr": "Tu choisis dans l’app les dossiers que tu prêtes : rien n’est prêté avant que tu valides, et les dossiers sans livres (films, téléchargements) ne sont plus cochés d’avance.",
+    "en": "You choose in the app which folders you lend: nothing is lent until you confirm, and folders without books (movies, downloads) are no longer ticked in advance."
+  },
+  "1.0.1": {
+    "fr": "Seuls les dossiers qui contiennent des livres sont prêtés.",
+    "en": "Only folders that contain books are lent."
+  },
+  "1.0.0": {
+    "fr": "Première version.",
+    "en": "First version."
+  }
+}
