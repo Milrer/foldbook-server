@@ -1,0 +1,10 @@
+{
+  "name": "foldbook-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Foldbook Server : prête la bibliothèque d'un NAS aux personnes invitées, via le relais de Foldbook.",
+  "scripts": { "start": "node server.mjs" },
+  "dependencies": { "ws": "^8.18.0" },
+  "engines": { "node": ">=20" }
+}
