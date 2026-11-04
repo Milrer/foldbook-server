@@ -14,7 +14,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import WebSocket from 'ws';
 
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 const LIBRARY = path.resolve(process.env.LIBRARY_DIR ?? '/library');
 const DATA = path.resolve(process.env.DATA_DIR ?? '/data');
 const PORT = Number(process.env.PORT ?? 8686);
@@ -61,10 +61,43 @@ async function loadIdentity() {
   }
 }
 
-/** Les dossiers de la racine : ce sont les bibliothèques. */
+/** Ce que Foldbook sait lire. */
+const BOOK = /\.(cbz|cbr|cb7|cbt|pdf|epub)$/i;
+
+/**
+ * Un dossier contient-il des livres ? On regarde jusqu'à quatre niveaux, sans dépasser
+ * quelques milliers d'entrées : un dossier de films ou de téléchargements n'en a pas.
+ */
+async function hasBooks(dir, depth = 4, budget = { left: 4000 }) {
+  const entries = await fsp.readdir(dir, { withFileTypes: true }).catch(() => []);
+  const subdirs = [];
+  for (const e of entries) {
+    if (--budget.left < 0) return false;
+    if (SKIP(e.name)) continue;
+    if (e.isFile() && BOOK.test(e.name)) return true;
+    if (e.isDirectory()) subdirs.push(e.name);
+  }
+  if (depth <= 1) return false;
+  for (const name of subdirs) if (await hasBooks(path.join(dir, name), depth - 1, budget)) return true;
+  return false;
+}
+
+/**
+ * Les bibliothèques : les dossiers de la racine qui contiennent des livres. Les autres
+ * (films, séries, téléchargements…) ne sont jamais prêtés, ni listés, ni lisibles.
+ * Recalculé toutes les 10 minutes.
+ */
+let lent = { names: new Set(), at: 0 };
 async function libraries() {
-  const entries = await fsp.readdir(LIBRARY, { withFileTypes: true }).catch(() => []);
-  return entries.filter((e) => e.isDirectory() && !SKIP(e.name)).map((e) => ({ name: e.name }));
+  if (Date.now() - lent.at > 10 * 60_000) {
+    const entries = await fsp.readdir(LIBRARY, { withFileTypes: true }).catch(() => []);
+    const names = new Set();
+    for (const e of entries) {
+      if (e.isDirectory() && !SKIP(e.name) && (await hasBooks(path.join(LIBRARY, e.name)))) names.add(e.name);
+    }
+    lent = { names, at: Date.now() };
+  }
+  return [...lent.names].sort().map((name) => ({ name }));
 }
 
 async function heartbeat() {
@@ -113,6 +146,8 @@ async function userOf(header) {
  */
 function allowed(uid, rel) {
   if (!uid) return false;
+  // Un dossier de la racine sans livres n'est prêté à personne, propriétaire compris.
+  if (rel && !lent.names.has(rel.split('/')[0])) return false;
   if (uid === state.owner) return true;
   const m = state.members?.find((x) => x.user_id === uid);
   if (!m) return false;
