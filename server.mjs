@@ -14,7 +14,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import WebSocket from 'ws';
 
-const VERSION = '1.0.1';
+const VERSION = '1.0.2';
 const LIBRARY = path.resolve(process.env.LIBRARY_DIR ?? '/library');
 const DATA = path.resolve(process.env.DATA_DIR ?? '/data');
 const PORT = Number(process.env.PORT ?? 8686);
@@ -33,7 +33,7 @@ const log = (...args) => console.log(new Date().toISOString(), ...args);
 const identityFile = path.join(DATA, 'server.json');
 let identity = null;
 /** Ce que Supabase dit au dernier battement : propriétaire, code d'association, invités. */
-let state = { owner: null, name: NAME, pair_code: null, members: [] };
+let state = { owner: null, name: NAME, pair_code: null, shared: null, members: [] };
 
 async function rpc(fn, args, token) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
@@ -83,22 +83,29 @@ async function hasBooks(dir, depth = 4, budget = { left: 4000 }) {
 }
 
 /**
- * Les bibliothèques : les dossiers de la racine qui contiennent des livres. Les autres
- * (films, séries, téléchargements…) ne sont jamais prêtés, ni listés, ni lisibles.
- * Recalculé toutes les 10 minutes.
+ * Les dossiers de la racine, chacun avec « contient des livres » ou non, recalculés toutes
+ * les 10 minutes. Le propriétaire choisit dans l'app ceux qu'il prête (`state.shared`) ; la
+ * liste à cocher part de ceux qui contiennent des livres.
  */
-let lent = { names: new Set(), at: 0 };
+let folders = { list: [], at: 0 };
 async function libraries() {
-  if (Date.now() - lent.at > 10 * 60_000) {
+  if (Date.now() - folders.at > 10 * 60_000) {
     const entries = await fsp.readdir(LIBRARY, { withFileTypes: true }).catch(() => []);
-    const names = new Set();
+    const list = [];
     for (const e of entries) {
-      if (e.isDirectory() && !SKIP(e.name) && (await hasBooks(path.join(LIBRARY, e.name)))) names.add(e.name);
+      if (e.isDirectory() && !SKIP(e.name)) list.push({ name: e.name, books: await hasBooks(path.join(LIBRARY, e.name)) });
     }
-    lent = { names, at: Date.now() };
+    folders = { list: list.sort((a, b) => a.name.localeCompare(b.name)), at: Date.now() };
   }
-  return [...lent.names].sort().map((name) => ({ name }));
+  return folders.list;
 }
+
+/**
+ * Les dossiers prêtés : ceux que le propriétaire a cochés. Tant qu'il n'a rien choisi,
+ * rien n'est prêté, à personne : un dossier de films ou de téléchargements ne part jamais
+ * par défaut.
+ */
+const lentNames = () => new Set(state.shared ?? []);
 
 async function heartbeat() {
   try {
@@ -146,8 +153,9 @@ async function userOf(header) {
  */
 function allowed(uid, rel) {
   if (!uid) return false;
-  // Un dossier de la racine sans livres n'est prêté à personne, propriétaire compris.
-  if (rel && !lent.names.has(rel.split('/')[0])) return false;
+  // Un dossier de la racine que le propriétaire n'a pas coché n'est prêté à personne,
+  // lui compris : par le relais, on ne lit que ce qui est prêté.
+  if (rel && !lentNames().has(rel.split('/')[0])) return false;
   if (uid === state.owner) return true;
   const m = state.members?.find((x) => x.user_id === uid);
   if (!m) return false;
