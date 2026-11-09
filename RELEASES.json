@@ -1,4 +1,8 @@
 {
+  "1.0.6": {
+    "fr": "Ton serveur se reconnecte tout seul quand ta box redémarre ou change d’adresse : tes invités ne perdent plus l’accès sans que rien ne le signale.",
+    "en": "Your server reconnects on its own when your router restarts or changes address: your guests no longer lose access without any sign of it."
+  },
   "1.0.5": {
     "fr": "Sécurité : ton serveur ne reçoit plus la connexion Foldbook de tes invités, seulement un jeton valable pour lui et pour une heure. Mise à jour nécessaire pour continuer à lire et prêter hors de chez toi.",
     "en": "Security: your server no longer receives your guests’ Foldbook sign-in, only a token valid for it and for one hour. Update needed to keep reading and lending away from home."

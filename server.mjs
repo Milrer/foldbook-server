@@ -15,7 +15,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import WebSocket from 'ws';
 
-const VERSION = '1.0.5';
+const VERSION = '1.0.6';
 const LIBRARY = path.resolve(process.env.LIBRARY_DIR ?? '/library');
 const DATA = path.resolve(process.env.DATA_DIR ?? '/data');
 const PORT = Number(process.env.PORT ?? 8686);
@@ -314,9 +314,20 @@ function connectRelay() {
   });
   relay = ws;
   const streams = new Map();
+  // Le relais envoie un ping toutes les 25 s. Sans ping depuis 70 s, la connexion est morte
+  // sans que le NAS l'ait su (box redémarrée, IP changée) : on la coupe pour se reconnecter.
+  let lastPing = Date.now();
+  const watchdog = setInterval(() => {
+    if (Date.now() - lastPing > 70_000) {
+      log('Relais muet depuis 70 s : reconnexion');
+      ws.terminate();
+    }
+  }, 15_000);
+  ws.on('ping', () => (lastPing = Date.now()));
   ws.on('open', () => {
     relayUp = true;
     retry = 1000;
+    lastPing = Date.now();
     log('Relais connecté');
   });
   ws.on('message', async (data) => {
@@ -354,6 +365,7 @@ function connectRelay() {
     }
   });
   ws.on('close', () => {
+    clearInterval(watchdog);
     relayUp = false;
     for (const s of streams.values()) s.destroy();
     setTimeout(connectRelay, retry);
